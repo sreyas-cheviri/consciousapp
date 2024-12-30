@@ -3,10 +3,10 @@ import jwt from "jsonwebtoken";
 import z from "zod";
 import bcrypt from "bcrypt";
 import mongoose from "mongoose";
-import { UserModel } from "./db";
+import { UserModel , ContentModel } from "./db";
 const app = express();
-import dotenv from "dotenv";
-dotenv.config();
+// import dotenv from "dotenv";
+// dotenv.config();
 const port = process.env.PORT || 3000;
 app.use(express.json());
 
@@ -65,7 +65,7 @@ app.post("/api/v1/signup", async (req, res) => {
   }
 });
 
-// -------------------signup-------------------
+
 
 // -------------------signin-------------------
 
@@ -106,11 +106,21 @@ app.post("/api/v1/signin", async (req, res) => {
   }
 });
 
-// -------------------signin-------------------
+
+
+
+// -------------------coontent add-------------------
 
 app.post("/api/v1/content", (req, res) => {
 
-    
+    const { link,title,type} = req.body;
+    try {
+        await ContentModel.create({
+
+        })
+    } catch (err) {
+        
+    }
 
 });
 
