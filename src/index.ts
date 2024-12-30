@@ -3,7 +3,8 @@ import jwt from "jsonwebtoken";
 import z from "zod";
 import bcrypt from "bcrypt";
 import mongoose from "mongoose";
-import { UserModel , ContentModel } from "./db";
+import { UserModel, ContentModel } from "./db";
+import auth from "./middleware";
 const app = express();
 // import dotenv from "dotenv";
 // dotenv.config();
@@ -65,8 +66,6 @@ app.post("/api/v1/signup", async (req, res) => {
   }
 });
 
-
-
 // -------------------signin-------------------
 
 app.post("/api/v1/signin", async (req, res) => {
@@ -106,28 +105,52 @@ app.post("/api/v1/signin", async (req, res) => {
   }
 });
 
-
-
-
 // -------------------coontent add-------------------
 
-app.post("/api/v1/content", (req, res) => {
+app.post("/api/v1/content",auth, async (req, res) => {
+  const { link, title, type } = req.body;
+  try {
+    await ContentModel.create({
+      title: title,
+      link: link,
+      type: type,
+      tag: [],
+      userId: req.userid,
+    });
+    res.status(200).json({ message: "content added successfully" });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
 
-    const { link,title,type} = req.body;
+// -------------------content get-------------------
+
+app.get("/api/v1/content", auth ,(req, res) => {
+    const userid = req.userid;
     try {
-        await ContentModel.create({
-
-        })
-    } catch (err) {
-        
+        const content  = ContentModel.find({userId: userid}).populate("userId" , "username");
+        res.status(200).json({content});
+    } catch (error) {
+        res.status(500).json({message: "Internal server error"}); 
     }
+});
 
+// -------------------content delete-------------------
+
+app.delete("/api/v1/content", (req, res) => {
+ 
 });
 
 
 
 
-app.get("/api/v1/content", (req, res) => {});
-app.delete("/api/v1/content", (req, res) => {});
+
+
+
+
+
+
+
 app.get("/api/v1/brain/:shareLink", (req, res) => {});
 app.post("/api/v1/brain/share", (req, res) => {});

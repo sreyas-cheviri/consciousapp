@@ -15,7 +15,7 @@ const auth = (req: Request, res: Response, next: NextFunction) =>{
     }
 };
 
-
+export default auth;
 
 // interface JwtPayloadWithId extends JwtPayload {
 //     id: string;
