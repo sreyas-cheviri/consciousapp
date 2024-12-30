@@ -3,16 +3,22 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon --exec ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@types/dotenv": "^6.1.1",
     "bcrypt": "^5.1.1",
+    "dotenv": "^16.4.7",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.9.2",
+    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2",
     "typescript": "^5.7.2",
     "zod": "^3.24.1"
   },

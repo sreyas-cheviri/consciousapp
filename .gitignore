@@ -1,3 +1,9 @@
-node_modules
+# Ignore node_modules
+node_modules/
 
-.env
+# Ignore the dist folder (compiled JavaScript files)
+dist/
+
+# Optional: Ignore log files, environment files, etc.
+*.log
+*.env
