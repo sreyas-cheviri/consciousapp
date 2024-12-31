@@ -8,7 +8,7 @@ const auth = (req: Request, res: Response, next: NextFunction) =>{
     const decodedtoken = jwt.verify(token as string, process.env.JWT_SECRET as string) as JwtPayload;
 
     if(decodedtoken){
-        req.userid = decodedtoken.id;
+        req.userId = decodedtoken.id;
         next();
     }else{
         res.status(403).json({ warning : " you are not logged in "});

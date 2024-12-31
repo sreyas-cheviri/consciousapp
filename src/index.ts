@@ -3,8 +3,9 @@ import jwt from "jsonwebtoken";
 import z from "zod";
 import bcrypt from "bcrypt";
 import mongoose from "mongoose";
-import { UserModel, ContentModel } from "./db";
+import { UserModel, ContentModel, LinkModel } from "./db";
 import auth from "./middleware";
+import { random } from "./utils";
 const app = express();
 // import dotenv from "dotenv";
 // dotenv.config();
@@ -107,7 +108,7 @@ app.post("/api/v1/signin", async (req, res) => {
 
 // -------------------coontent add-------------------
 
-app.post("/api/v1/content",auth, async (req, res) => {
+app.post("/api/v1/content", auth, async (req, res) => {
   const { link, title, type } = req.body;
   try {
     await ContentModel.create({
@@ -115,7 +116,7 @@ app.post("/api/v1/content",auth, async (req, res) => {
       link: link,
       type: type,
       tag: [],
-      userId: req.userid,
+      userId: req.userId,
     });
     res.status(200).json({ message: "content added successfully" });
   } catch (err) {
@@ -126,31 +127,90 @@ app.post("/api/v1/content",auth, async (req, res) => {
 
 // -------------------content get-------------------
 
-app.get("/api/v1/content", auth ,(req, res) => {
-    const userid = req.userid;
-    try {
-        const content  = ContentModel.find({userId: userid}).populate("userId" , "username");
-        res.status(200).json({content});
-    } catch (error) {
-        res.status(500).json({message: "Internal server error"}); 
-    }
+app.get("/api/v1/content", auth, (req, res) => {
+  const userId = req.userId;
+  try {
+    const content = ContentModel.find({ userId: userId }).populate(
+      "userId",
+      "username"
+    );
+    res.status(200).json({ content });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 // -------------------content delete-------------------
 
-app.delete("/api/v1/content", (req, res) => {
- 
+app.delete("/api/v1/content", auth, async (req, res) => {
+  const {  contentId } = req.body;
+  await ContentModel.deleteMany({
+    contentId,
+    userId: req.userId,
+  });
+  res.json({ message: "content deleted successfully" });
 });
 
+app.get("/api/v1/brain/:shareLink", auth, async (req, res) => {
+  const share = req.body.share;
+  if (share) {
+    const content = await LinkModel.findOne({ userId: req.userId });
+    if (content) {
+      res.json({ hash: content.hash });
+      return;
+    }
+    const hash = random(10);
+    await LinkModel.create({
+      userId: req.userId,
+      hash: hash,
+    });
 
+    res.json({
+      hash,
+    });
+  } else {
+    await LinkModel.deleteOne({
+      userId: req.userId,
+    });
 
+    res.json({
+      message: "Removed link",
+    });
+  }
+});
 
+app.get("/api/v1/brain/:shareLink", async (req, res) => {
+  const hash = req.params.shareLink;
 
+  const link = await LinkModel.findOne({
+    hash,
+  });
 
+  if (!link) {
+    res.status(411).json({
+      message: "Sorry incorrect input",
+    });
+    return;
+  }
+  // userId
+  const content = await ContentModel.find({
+    userId: link.userId,
+  });
 
+  console.log(link);
+  const user = await UserModel.findOne({
+    _id: link.userId,
+  });
 
+  if (!user) {
+    res.status(411).json({
+      message: "user not found, error should ideally not happen",
+    });
+    return;
+  }
 
-
-
-app.get("/api/v1/brain/:shareLink", (req, res) => {});
-app.post("/api/v1/brain/share", (req, res) => {});
+  res.json({
+    username: user.username,
+    content: content,
+  });
+});
