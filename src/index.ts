@@ -4,27 +4,18 @@ import z from "zod";
 import bcrypt from "bcrypt";
 import mongoose from "mongoose";
 import { UserModel, ContentModel, LinkModel } from "./db";
-import auth from "./middleware";
+import { auth } from "./middleware";
 import { random } from "./utils";
 const app = express();
+import dotenv from 'dotenv';
+dotenv.config();
+
 // import dotenv from "dotenv";
 // dotenv.config();
 const port = process.env.PORT || 3000;
 app.use(express.json());
 
-const db_connect = async () => {
-  try {
-    await mongoose.connect(process.env.MONGO_URL as string);
-    console.log("connected to db");
-    app.listen(port, () => {
-      console.log(`server is running on port ${port}`);
-    });
-  } catch (error) {
-    console.log("error connecting to db");
-    process.exit(1);
-  }
-};
-db_connect();
+
 
 // -------------------signup-------------------
 
@@ -214,3 +205,18 @@ app.get("/api/v1/brain/:shareLink", async (req, res) => {
     content: content,
   });
 });
+
+
+const db_connect = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URL as string);
+    console.log("connected to db");
+    app.listen(port, () => {
+      console.log(`server is running on port ${port}`);
+    });
+  } catch (error) {
+    console.log("error connecting to db");
+    process.exit(1);
+  }
+};
+db_connect();

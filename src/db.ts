@@ -10,8 +10,8 @@ const ContentSchema = new mongoose.Schema({
   title: {type: String , require: true},
   type: {type: String , require: true},
   link: {type: String , require: true},
-  tags:[ {types: Types.ObjectId, ref: "Tag"}],
-  userId: { types: Types.ObjectId , ref: "User" , require: true},
+  tags:[ {type: Types.ObjectId, ref: "Tag"}],
+  userId: { type: Types.ObjectId , ref: "User" , require: true},
 })
 
 
