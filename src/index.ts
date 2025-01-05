@@ -15,6 +15,22 @@ dotenv.config();
 const port = process.env.PORT || 3000;
 app.use(express.json());
 
+const dbconnect = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URL as string);
+    console.log("connected to db");
+    app.listen(port, () => {
+      console.log(`server is running on port ${port}`);
+    });
+  } catch (error) {
+    console.log("error connecting to db");
+    console.log(error); 
+    
+    process.exit(1);
+  }
+};
+
+dbconnect();
 
 
 // -------------------signup-------------------
@@ -118,15 +134,17 @@ app.post("/api/v1/content", auth, async (req, res) => {
 
 // -------------------content get-------------------
 
-app.get("/api/v1/content", auth, (req, res) => {
+app.get("/api/v1/content", auth, async (req, res) => {
   const userId = req.userId;
   try {
-    const content = ContentModel.find({ userId: userId }).populate(
+    const content = await ContentModel.find({ userId: userId }).populate(
       "userId",
       "username"
     );
     res.status(200).json({ content });
   } catch (error) {
+    console.log(error);
+    
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -142,7 +160,7 @@ app.delete("/api/v1/content", auth, async (req, res) => {
   res.json({ message: "content deleted successfully" });
 });
 
-app.get("/api/v1/brain/:shareLink", auth, async (req, res) => {
+app.post("/api/v1/brain/share", auth, async (req, res) => {
   const share = req.body.share;
   if (share) {
     const content = await LinkModel.findOne({ userId: req.userId });
@@ -207,16 +225,3 @@ app.get("/api/v1/brain/:shareLink", async (req, res) => {
 });
 
 
-const db_connect = async () => {
-  try {
-    await mongoose.connect(process.env.MONGO_URL as string);
-    console.log("connected to db");
-    app.listen(port, () => {
-      console.log(`server is running on port ${port}`);
-    });
-  } catch (error) {
-    console.log("error connecting to db");
-    process.exit(1);
-  }
-};
-db_connect();
