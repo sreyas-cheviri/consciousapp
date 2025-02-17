@@ -9,9 +9,9 @@ import { random } from "./utils";
 const app = express();
 import dotenv from 'dotenv';
 dotenv.config();
+import cors from "cors";
 
-// import dotenv from "dotenv";
-// dotenv.config();
+app.use(cors())
 const port = process.env.PORT || 3000;
 app.use(express.json());
 
@@ -100,7 +100,7 @@ app.post("/api/v1/signin", async (req, res) => {
           );
           res
             .status(200)
-            .json({ message: "User logged in successfully", token });
+            .json({ message: "User logged in successfully", token , username});
         }
       } else {
         res.status(401).json({ Message: "Invalid credentials" });

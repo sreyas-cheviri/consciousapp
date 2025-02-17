@@ -3,16 +3,16 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-   "dev": "nodemon --exec ts-node src/index.ts",
-   "build": "tsc",
-   "start": "npm run build && node dist/index.js"
-}
-,
+    "dev": "nodemon --exec ts-node src/index.ts",
+    "build": "tsc",
+    "start": "npm run build && node dist/index.js"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@types/cors": "^2.8.17",
     "@types/dotenv": "^6.1.1",
     "bcrypt": "^5.1.1",
     "dotenv": "^16.4.7",
@@ -27,6 +27,7 @@
     "@types/bcrypt": "^5.0.2",
     "@types/express": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.7",
+    "cors": "^2.8.5",
     "express": "^4.21.2"
   }
 }
