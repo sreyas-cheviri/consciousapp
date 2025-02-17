@@ -39,12 +39,12 @@ app.post("/api/v1/signup", async (req, res) => {
   const inputzod = z.object({
     username: z
       .string()
-      .min(3, { message: "Username must be at least 3 characters long" })
+      .min(3, { message: "Username must be at least 3 characters long " })
       .max(20, { message: "Username must be at most 20 characters long" }),
 
     password: z
       .string()
-      .min(6, { message: "Password must be at least 6 characters long" })
+      .min(6, { message: "Password must be at least 6 characters long " })
       .max(20, { message: "Password must be at most 20 characters long" })
       .regex(/[!@#$%^&*(),.?":{}|<>]/, {
         message: "Password must contain at least one special character",
@@ -55,7 +55,7 @@ app.post("/api/v1/signup", async (req, res) => {
   if (!validInput.success) {
     const errorMessage = validInput.error.errors.map((e) => e.message);
     res.status(411).json({
-      message: "Invalid format",
+      message:(errorMessage || "Invalid format") ,
       error: errorMessage,
     });
     return;
@@ -67,12 +67,32 @@ app.post("/api/v1/signup", async (req, res) => {
     const user = await UserModel.findOne({ username });
     if (!user) {
       await UserModel.create({ username, password: hashpassword });
+    }else{
+      res.status(500).json({ message: "User name is taken" }); return;
     }
     res.status(200).json({ message: "User created successfully" });
   } catch (err) {
     res.status(500).json({ message: "Internal server error" });
   }
 });
+//----------guest --
+
+function generateGuestToken() {
+  return jwt.sign(
+    { role: "guest", userId: `guest_${Date.now()}` }, 
+    process.env.JWT_SECRET as string,
+    { expiresIn: "1h" } // Token valid for 1 hour
+  );
+}
+
+app.post("/api/v1/guest",async (req,res)=>{
+  try {
+    const token =  generateGuestToken();
+    res.json({token , username: "Guest"})
+  } catch (error) {
+    res.status(500).json({message: "Guest login failed"})
+  }
+})
 
 // -------------------signin-------------------
 
@@ -103,7 +123,7 @@ app.post("/api/v1/signin", async (req, res) => {
             .json({ message: "User logged in successfully", token , username});
         }
       } else {
-        res.status(401).json({ Message: "Invalid credentials" });
+        res.status(401).json({ message: "Invalid credentials" });
       }
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
