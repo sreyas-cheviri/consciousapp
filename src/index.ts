@@ -77,22 +77,22 @@ app.post("/api/v1/signup", async (req, res) => {
 });
 //----------guest --
 
-function generateGuestToken() {
-  return jwt.sign(
-    { role: "guest", userId: `guest_${Date.now()}` }, 
-    process.env.JWT_SECRET as string,
-    { expiresIn: "1h" } // Token valid for 1 hour
-  );
-}
+// function generateGuestToken() {
+//   return jwt.sign(
+//     { role: "guest", userId: `guest_${Date.now()}` }, 
+//     process.env.JWT_SECRET as string,
+//     { expiresIn: "1h" } // Token valid for 1 hour
+//   );
+// }
 
-app.post("/api/v1/guest",async (req,res)=>{
-  try {
-    const token =  generateGuestToken();
-    res.json({token , username: "Guest"})
-  } catch (error) {
-    res.status(500).json({message: "Guest login failed"})
-  }
-})
+// app.post("/api/v1/guest",async (req,res)=>{
+//   try {
+//     const token =  generateGuestToken();
+//     res.json({token , username: "Guest"})
+//   } catch (error) {
+//     res.status(500).json({message: "Guest login failed"})
+//   }
+// })
 
 // -------------------signin-------------------
 
@@ -136,12 +136,13 @@ app.post("/api/v1/signin", async (req, res) => {
 // -------------------coontent add-------------------
 
 app.post("/api/v1/content", auth, async (req, res) => {
-  const { link, title, type } = req.body;
+  const { link, title, type , content} = req.body;
   try {
     await ContentModel.create({
       title: title,
       link: link,
       type: type,
+      content : content,
       tag: [],
       userId: req.userId,
     });
@@ -171,14 +172,20 @@ app.get("/api/v1/content", auth, async (req, res) => {
 
 // -------------------content delete-------------------
 
-app.delete("/api/v1/content", auth, async (req, res) => {
-  const {  contentId } = req.body;
-  await ContentModel.deleteMany({
-    contentId,
-    userId: req.userId,
-  });
-  res.json({ message: "content deleted successfully" });
+app.delete("/api/v1/content/:contentId", auth, async (req, res) => {
+  const { contentId } = req.params; 
+
+  if (!contentId || !mongoose.Types.ObjectId.isValid(contentId)) {
+    res.status(400).json({ error: "Invalid or missing content ID" });
+    return;
+  }
+
+  await ContentModel.deleteOne({ _id: contentId, userId: req.userId });
+
+  res.json({ message: "Content deleted successfully" });
+  return;
 });
+
 
 app.post("/api/v1/brain/share", auth, async (req, res) => {
   const share = req.body.share;
@@ -207,6 +214,9 @@ app.post("/api/v1/brain/share", auth, async (req, res) => {
     });
   }
 });
+
+
+
 
 app.get("/api/v1/brain/:shareLink", async (req, res) => {
   const hash = req.params.shareLink;
