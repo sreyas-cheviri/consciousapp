@@ -12,7 +12,13 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: ["https://consciousapp.vercel.app", "https://cronify-web-rho.vercel.app"],
+    methods: ["GET", "POST", "PUT", "DELETE"], // Adjust methods as needed
+    credentials: true, // If you need to allow cookies or authentication headers
+  })
+);
 
 const port = process.env.PORT || 3000;
 
