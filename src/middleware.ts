@@ -19,7 +19,7 @@ export const auth = (req: Request, res: Response, next: NextFunction) =>{
         req.userId = decodedtoken.id;
         next();
     }else{
-        res.status(403).json({ warning : " you are not logged in "});
+        res.status(403).json({ warning : "you are not logged in"});
     }
 };
 

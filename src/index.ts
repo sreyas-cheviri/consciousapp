@@ -4,15 +4,18 @@ import z from "zod";
 import bcrypt from "bcrypt";
 import mongoose from "mongoose";
 import { UserModel, ContentModel, LinkModel } from "./db";
+import dotenv from "dotenv";
 import { auth } from "./middleware";
 import { random } from "./utils";
-const app = express();
-import dotenv from 'dotenv';
-dotenv.config();
 import cors from "cors";
+dotenv.config();
 
-app.use(cors())
+const app = express();
+
+app.use(cors());
+
 const port = process.env.PORT || 3000;
+
 app.use(express.json());
 
 const dbconnect = async () => {
@@ -24,14 +27,13 @@ const dbconnect = async () => {
     });
   } catch (error) {
     console.log("error connecting to db");
-    console.log(error); 
-    
+    console.log(error);
+
     process.exit(1);
   }
 };
 
 dbconnect();
-
 
 // -------------------signup-------------------
 
@@ -55,7 +57,7 @@ app.post("/api/v1/signup", async (req, res) => {
   if (!validInput.success) {
     const errorMessage = validInput.error.errors.map((e) => e.message);
     res.status(411).json({
-      message:(errorMessage || "Invalid format") ,
+      message: errorMessage || "Invalid format",
       error: errorMessage,
     });
     return;
@@ -67,8 +69,9 @@ app.post("/api/v1/signup", async (req, res) => {
     const user = await UserModel.findOne({ username });
     if (!user) {
       await UserModel.create({ username, password: hashpassword });
-    }else{
-      res.status(500).json({ message: "User name is taken" }); return;
+    } else {
+      res.status(500).json({ message: "User name is taken" });
+      return;
     }
     res.status(200).json({ message: "User created successfully" });
   } catch (err) {
@@ -79,7 +82,7 @@ app.post("/api/v1/signup", async (req, res) => {
 
 // function generateGuestToken() {
 //   return jwt.sign(
-//     { role: "guest", userId: `guest_${Date.now()}` }, 
+//     { role: "guest", userId: `guest_${Date.now()}` },
 //     process.env.JWT_SECRET as string,
 //     { expiresIn: "1h" } // Token valid for 1 hour
 //   );
@@ -118,9 +121,7 @@ app.post("/api/v1/signin", async (req, res) => {
             process.env.JWT_SECRET as string,
             { expiresIn: "7days" }
           );
-          res
-            .status(200)
-            .json({ message: "User logged in successfully", token , username});
+          res.status(200).json({ message: "User logged in successfully", token, username });
         }
       } else {
         res.status(401).json({ message: "Invalid credentials" });
@@ -136,13 +137,13 @@ app.post("/api/v1/signin", async (req, res) => {
 // -------------------coontent add-------------------
 
 app.post("/api/v1/content", auth, async (req, res) => {
-  const { link, title, type , content} = req.body;
+  const { link, title, type, content } = req.body;
   try {
     await ContentModel.create({
       title: title,
       link: link,
       type: type,
-      content : content,
+      content: content,
       tag: [],
       userId: req.userId,
     });
@@ -162,15 +163,18 @@ app.get("/api/v1/content", auth, async (req, res) => {
       "userId",
       "username"
     );
-    if(content.length == 0){
-      res.json({ content:[
-        {
-          _id: "default-1",
-          type: "Note",
-          title: "Welcome to  Conscious!",
-          content: "This is your default content. Start exploring now! click on Add Memory to add more content",
-        }
-      ]});
+    if (content.length == 0) {
+      res.json({
+        content: [
+          {
+            _id: "default-1",
+            type: "Note",
+            title: "Welcome to  Conscious!",
+            content:
+              "This is your default content. Start exploring now! click on Add Memory to add more content",
+          },
+        ],
+      });
       return;
     }
     res.status(200).json({ content });
@@ -185,7 +189,7 @@ app.get("/api/v1/content", auth, async (req, res) => {
 // -------------------content delete-------------------
 
 app.delete("/api/v1/content/:contentId", auth, async (req, res) => {
-  const { contentId } = req.params; 
+  const { contentId } = req.params;
 
   if (!contentId || !mongoose.Types.ObjectId.isValid(contentId)) {
     res.status(400).json({ error: "Invalid or missing content ID" });
@@ -197,7 +201,6 @@ app.delete("/api/v1/content/:contentId", auth, async (req, res) => {
   res.json({ message: "Content deleted successfully" });
   return;
 });
-
 
 app.post("/api/v1/brain/share", auth, async (req, res) => {
   const share = req.body.share;
@@ -227,9 +230,6 @@ app.post("/api/v1/brain/share", auth, async (req, res) => {
   }
 });
 
-
-
-
 app.get("/api/v1/brain/:shareLink", async (req, res) => {
   const hash = req.params.shareLink;
 
@@ -248,7 +248,7 @@ app.get("/api/v1/brain/:shareLink", async (req, res) => {
     userId: link.userId,
   });
 
-  console.log(link);
+  // console.log(link);
   const user = await UserModel.findOne({
     _id: link.userId,
   });
@@ -265,5 +265,3 @@ app.get("/api/v1/brain/:shareLink", async (req, res) => {
     content: content,
   });
 });
-
-
