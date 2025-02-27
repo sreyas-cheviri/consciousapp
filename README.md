@@ -1,11 +1,11 @@
 
 
 
-# SuperConscious - Backend
+# Conscious - Backend
 
-## FE repo - [superconscious-client](https://github.com/sreyas-cheviri/superconscious-client).
+## FE repo - [conscious-client](https://github.com/sreyas-cheviri/superconscious-client).
 
-SuperConscious is a second brain web app designed to save and search links, notes, and other media from various sources effortlessly. This repository contains the backend codebase for the SuperConscious application.
+Conscious is a second brain web app designed to save and search links, notes, and other media from various sources effortlessly. This repository contains the backend codebase for the Conscious application.
 
 
 ### Installation
