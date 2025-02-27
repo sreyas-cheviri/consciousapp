@@ -41,6 +41,11 @@ const dbconnect = async () => {
 
 dbconnect();
 
+app.get("/", (req, res) => {
+  res.send("Server is running!");
+});
+
+
 // -------------------signup-------------------
 
 app.post("/api/v1/signup", async (req, res) => {
