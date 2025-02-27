@@ -14,7 +14,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: ["https://consciousapp.vercel.app", "https://cronify-web-rho.vercel.app"],
+    origin: ["https://consciousapp.vercel.app", "https://cronify-web-rho.vercel.app", "http://localhost:5173"],
     methods: ["GET", "POST", "PUT", "DELETE"], // Adjust methods as needed
     credentials: true, // If you need to allow cookies or authentication headers
   })
