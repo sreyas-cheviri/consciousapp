@@ -13,7 +13,7 @@ const ContentSchema = new mongoose.Schema({
   content: {type :String},
   tags:[ {type: Types.ObjectId, ref: "Tag"}],
   userId: { type: Types.ObjectId , ref: "User" , require: true},
-})
+}, { timestamps: true })
 
 
 // new mongoose.Schema({ is when u take schema from mongoose and create a new schema
