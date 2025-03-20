@@ -103,35 +103,40 @@ async function getEmbedding(text: string): Promise<number[]> {
 }
 
 // Function to scrape URL content
+
+
 async function scrapeUrl(url: string): Promise<ScrapedData> {
   try {
-    // Log the executable path for debugging
-    console.log(`Using Chrome at: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
+    console.log(`Node environment: ${process.env.NODE_ENV}`);
+    console.log(`Puppeteer package version: ${require('puppeteer/package.json').version}`);
+    
+    let executablePath;
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+      console.log(`Using Chrome at: ${executablePath}`);
+    } else {
+      executablePath = puppeteer.executablePath();
+      console.log(`Using bundled Chrome at: ${executablePath}`);
+    }
     
     const browser = await puppeteer.launch({
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
+      executablePath,
       headless: true,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
-        "--single-process",
-        "--no-zygote",
-        "--disable-dev-shm-usage", // Add this to avoid memory issues
+        '--disable-dev-shm-usage',
+        '--single-process',
+        '--no-zygote',
       ],
     });
     
     const page = await browser.newPage();
-    
-    // Set a longer timeout for navigation
-    await page.goto(url, { 
-      waitUntil: 'networkidle2',
-      timeout: 60000 // 60 seconds
-    });
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
     
     // Extract title and content
     const title = await page.title();
     const content = await page.evaluate(() => {
-      // Basic content extraction
       const paragraphs = Array.from(document.querySelectorAll('p')).map(p => p.textContent);
       const headings = Array.from(document.querySelectorAll('h1, h2, h3')).map(h => h.textContent);
       return [...headings, ...paragraphs].filter(Boolean).join(' ').trim();
@@ -140,12 +145,13 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
     await browser.close();
     return { title, content };
   } catch (error) {
+    console.error("Error scraping URL:", error);
     if (error instanceof Error) {
-      console.error("Error scraping URL:", error.toString(), error.stack);
+      console.error(error.stack);
     } else {
-      console.error("Error scraping URL:", error);
+      console.error("An unknown error occurred:", error);
     }
-    return { title: "Failed to scrape", content: `Error: ${error instanceof Error ? error.toString() : String(error)}` };
+    return { title: "Failed to scrape", content: `Error: ${error instanceof Error ? error.message : "Unknown error"}` };
   }
 }
 
