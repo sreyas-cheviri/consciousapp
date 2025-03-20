@@ -275,6 +275,12 @@ app.post("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
       if (!titleToSave) titleToSave = scrapedData.title;
     }
     
+    // Generate timestamp in a human-readable format
+    const timestamp = new Date().toLocaleString();
+    
+    // Prepare the text for embedding by including title and timestamp
+    const textForEmbedding = `Title: ${titleToSave}\nDate: ${timestamp}\nContent: ${contentToSave}`;
+    
     const newContent = await ContentModel.create({
       title: titleToSave,
       link: link,
@@ -282,23 +288,22 @@ app.post("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
       content: contentToSave,
       tag: [],
       userId: req.userId,
+      createdAt: new Date(), // This will be automatic in most MongoDB schemas
     });
 
-    const embedding = await getEmbedding(contentToSave);
-    
-    // Get current timestamp
-    const timestamp = new Date().toISOString();
+    // Get embedding of the combined text (title + timestamp + content)
+    const embedding = await getEmbedding(textForEmbedding);
 
     await pineconeIndex.upsert([
       {
         id: newContent._id.toString(),
-        values: embedding, // Make sure this is a flat array of numbers
+        values: embedding,
         metadata: {
           userId: req.userId?.toString() || "",
           title: titleToSave,
           contentType: type,
-          snippet: contentToSave.substring(0, 100),
-          timestamp: timestamp // Add timestamp to metadata
+          timestamp: timestamp,
+          snippet: contentToSave.substring(0, 100)
         }
       }
     ]);
