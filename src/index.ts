@@ -118,7 +118,10 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
     });
     
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: 'networkidle2' });
+    await page.goto(url, { 
+      waitUntil: 'networkidle2',
+      timeout: 60000 // Increase timeout to 60 seconds
+    });
     
     // Extract title and content
     const title = await page.title();
