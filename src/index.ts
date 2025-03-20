@@ -285,19 +285,23 @@ app.post("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
     });
 
     const embedding = await getEmbedding(contentToSave);
+    
+    // Get current timestamp
+    const timestamp = new Date().toISOString();
 
-  await pineconeIndex.upsert([
-  {
-    id: newContent._id.toString(),
-    values: embedding, // Make sure this is a flat array of numbers
-    metadata: {
-      userId: req.userId?.toString() || "",
-      title: titleToSave,
-      contentType: type,
-      snippet: contentToSave.substring(0, 100)
-    }
-  }
-]);
+    await pineconeIndex.upsert([
+      {
+        id: newContent._id.toString(),
+        values: embedding, // Make sure this is a flat array of numbers
+        metadata: {
+          userId: req.userId?.toString() || "",
+          title: titleToSave,
+          contentType: type,
+          snippet: contentToSave.substring(0, 100),
+          timestamp: timestamp // Add timestamp to metadata
+        }
+      }
+    ]);
     
     res.status(200).json({ message: "content added successfully" });
   } catch (err) {
@@ -305,7 +309,6 @@ app.post("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
-
 // -------------------content get-------------------
 
 app.get("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
@@ -422,7 +425,7 @@ app.post("/api/v1/search", auth, async (req: AuthRequest, res: Response): Promis
       context += `Content: ${item.content.substring(0, 300)}${item.content.length > 300 ? '...' : ''}\n\n`;
     });
     
-    const prompt = `${context}\n\nUser query: "${query}"\n\nBased on the information above from the user's second brain, please provide a helpful and concise response to their query. If the information doesn't contain a direct answer, try to extract relevant insights that might be helpful.`;
+    const prompt = `${context}\n\nUser query: "${query}"\n\nBased on the information above from the user's second brain, please provide a helpful and concise response to their query. If the information doesn't contain a direct answer, try to extract relevant insights that might be helpful. if any questions asked also try to answer it.`;
     const result = await model.generateContent({ contents: [{ role: "user", parts: [{ text: prompt }] }] });
 
 
