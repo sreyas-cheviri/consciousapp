@@ -14,7 +14,7 @@ RUN npm ci
 COPY . .
 
 # Compile TypeScript before running
-RUN npm run start
+RUN npm run build
 
 # Run the compiled app
 CMD ["node", "dist/index.js"]
