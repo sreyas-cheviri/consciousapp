@@ -24,10 +24,13 @@
     "zod": "^3.24.1"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.0",
+    "@pinecone-database/pinecone": "^5.1.1",
     "@types/bcrypt": "^5.0.2",
     "@types/express": "^5.0.0",
     "@types/jsonwebtoken": "^9.0.7",
     "cors": "^2.8.5",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "puppeteer": "^24.4.0"
   }
 }
