@@ -105,22 +105,27 @@ async function getEmbedding(text: string): Promise<number[]> {
 // Function to scrape URL content
 async function scrapeUrl(url: string): Promise<ScrapedData> {
   try {
+    // Log the executable path for debugging
+    console.log(`Using Chrome at: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
+    
     const browser = await puppeteer.launch({
-      executablePath:
-      process.env.NODE_ENV === "production"
-        ? process.env.PUPPETEER_EXECUTABLE_PATH
-        : puppeteer.executablePath(),
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || puppeteer.executablePath(),
       headless: true,
-      args: ['--no-sandbox', 
+      args: [
+        '--no-sandbox',
         '--disable-setuid-sandbox',
         "--single-process",
-        "--no-zygote",],
+        "--no-zygote",
+        "--disable-dev-shm-usage", // Add this to avoid memory issues
+      ],
     });
     
     const page = await browser.newPage();
+    
+    // Set a longer timeout for navigation
     await page.goto(url, { 
       waitUntil: 'networkidle2',
-      timeout: 60000 // Increase timeout to 60 seconds
+      timeout: 60000 // 60 seconds
     });
     
     // Extract title and content
@@ -135,8 +140,12 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
     await browser.close();
     return { title, content };
   } catch (error) {
-    console.error("Error scraping URL:", error);
-    return { title: "Failed to scrape", content: "Error accessing the URL" };
+    if (error instanceof Error) {
+      console.error("Error scraping URL:", error.toString(), error.stack);
+    } else {
+      console.error("Error scraping URL:", error);
+    }
+    return { title: "Failed to scrape", content: `Error: ${error instanceof Error ? error.toString() : String(error)}` };
   }
 }
 
