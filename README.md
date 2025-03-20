@@ -27,7 +27,11 @@ Conscious is a second brain web app designed to save and search links, notes, an
    ```env
    PORT=3000
    MONGODB_URI=mongodb://localhost:27017/superconscious
-   ELASTICSEARCH_URI=http://localhost:9200
+   GEMINI_API_KEY=
+   PINECONE_API_KEY=
+   PINECONE_ENVIRONMENT=index region
+   PINECONE_INDEX=index name
+
    JWT_SECRET=your_jwt_secret
    ```
 
