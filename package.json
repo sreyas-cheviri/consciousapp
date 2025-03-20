@@ -2,11 +2,11 @@
   "name": "superconscious",
   "version": "1.0.0",
   "main": "index.js",
-  "scripts": {
-    "dev": "nodemon --exec ts-node src/index.ts",
-    "build": "tsc",
-    "start": "npm run build && node dist/index.js"
-  },
+ "scripts": {
+  "dev": "nodemon --exec ts-node src/index.ts",
+  "build": "tsc && npx puppeteer browsers install chrome",
+  "start": "npm run build && node dist/index.js"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",

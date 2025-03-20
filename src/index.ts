@@ -106,9 +106,11 @@ async function getEmbedding(text: string): Promise<number[]> {
 async function scrapeUrl(url: string): Promise<ScrapedData> {
   try {
     const browser = await puppeteer.launch({
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/opt/render/.cache/puppeteer/chrome-linux/chrome',
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
     });
+    
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: 'networkidle2' });
     
