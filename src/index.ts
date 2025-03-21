@@ -121,6 +121,7 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
     
     const browser = await puppeteer.launch({
       executablePath,
+      timeout: 60000,
       headless: true,
       args: [
         '--no-sandbox',
