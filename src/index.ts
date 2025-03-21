@@ -428,7 +428,7 @@ app.post("/api/v1/search", auth, async (req: AuthRequest, res: Response): Promis
     contentWithScores.forEach((item: any, index: number) => {
       context += `[Content ${index + 1}]\nTitle: ${item.title}\nType: ${item.type}\n`;
       if (item.link) context += `Link: ${item.link}\n`;
-      context += `Content: ${item.content.substring(0, 1000)}${item.content.length > 1000 ? '...' : ''}\n\n`;
+      context += `Content: ${item.content}\n\n`;
     });
     
     const prompt = `${context}\n\nUser query: "${query}"\n\nBased on the information above from the user's second brain, please provide a helpful and concise response to their query. If the information doesn't contain a direct answer, try to extract relevant insights that might be helpful. if any questions asked also try to answer it.`;
