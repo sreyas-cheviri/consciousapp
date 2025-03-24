@@ -31,7 +31,6 @@ Conscious is a second brain web app designed to save and search links, notes, an
    PINECONE_API_KEY=
    PINECONE_ENVIRONMENT=index region
    PINECONE_INDEX=index name
-
    JWT_SECRET=your_jwt_secret
    ```
 

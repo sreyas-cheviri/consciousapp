@@ -11,6 +11,7 @@ const ContentSchema = new mongoose.Schema({
   type: {type: String , require: true},
   link: {type: String },
   content: {type :String},
+  imageUrl: { type: String }, // Remove default:null to allow undefined
   tags:[ {type: Types.ObjectId, ref: "Tag"}],
   userId: { type: Types.ObjectId , ref: "User" , require: true},
 }, { timestamps: true })

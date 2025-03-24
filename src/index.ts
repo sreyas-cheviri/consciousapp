@@ -10,7 +10,7 @@ import { random } from "./utils";
 import cors from "cors";
 import puppeteer from "puppeteer";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { Index, Pinecone } from '@pinecone-database/pinecone';
+import { Index, Pinecone } from "@pinecone-database/pinecone";
 
 dotenv.config();
 
@@ -29,6 +29,7 @@ interface Content {
   content: string;
   tag: string[];
   userId: mongoose.Types.ObjectId;
+  imageUrl?: string;
 }
 
 interface Link {
@@ -48,6 +49,7 @@ interface SearchQuery {
 interface ScrapedData {
   title: string;
   content: string;
+  imageUrl?: string | null; // Allow imageUrl to be null or undefined
 }
 
 // Initialize Express
@@ -55,7 +57,11 @@ const app = express();
 
 app.use(
   cors({
-    origin: ["https://consciousapp.vercel.app", "https://cronify-web-rho.vercel.app", "http://localhost:5173"],
+    origin: [
+      "https://consciousapp.vercel.app",
+      "https://cronify-web-rho.vercel.app",
+      "http://localhost:5173",
+    ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
@@ -71,7 +77,7 @@ const initPinecone = async () => {
     apiKey: process.env.PINECONE_API_KEY as string,
     // Note: environment is no longer needed in the newer SDK
   });
-  
+
   // Get the index directly from the pinecone instance
   return pinecone.index(process.env.PINECONE_INDEX as string);
 };
@@ -82,34 +88,50 @@ let pineconeIndex: Index;
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-
 // Function to get embeddings from Gemini
 // Update your getEmbedding function
 async function getEmbedding(text: string): Promise<number[]> {
   const embeddingModel = genAI.getGenerativeModel({ model: "embedding-001" });
   const result = await embeddingModel.embedContent(text);
-  
+
   // Try to access the values property if it exists
-  if (result.embedding && typeof result.embedding === 'object') {
-    if ('values' in result.embedding && Array.isArray(result.embedding.values)) {
+  if (result.embedding && typeof result.embedding === "object") {
+    if (
+      "values" in result.embedding &&
+      Array.isArray(result.embedding.values)
+    ) {
       return result.embedding.values;
     } else if (Array.isArray(result.embedding)) {
       return result.embedding;
     }
   }
-  
+
   console.error("Unexpected embedding format:", result.embedding);
   throw new Error("Failed to get valid embedding");
 }
 
-// Function to scrape URL content
+// Add this helper function near the top with other utility functions
+function isValidImageUrl(url: string | null): boolean {
+  if (!url) return false;
+  // Skip blob URLs as they are temporary and won't work when stored
+  if (url.startsWith('blob:')) return false;
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
+// Function to scrape URL content
 
 async function scrapeUrl(url: string): Promise<ScrapedData> {
   try {
     console.log(`Node environment: ${process.env.NODE_ENV}`);
-    console.log(`Puppeteer package version: ${require('puppeteer/package.json').version}`);
-    
+    console.log(
+      `Puppeteer package version: ${require("puppeteer/package.json").version}`
+    );
+
     let executablePath;
     if (process.env.PUPPETEER_EXECUTABLE_PATH) {
       executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
@@ -118,33 +140,63 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
       executablePath = puppeteer.executablePath();
       console.log(`Using bundled Chrome at: ${executablePath}`);
     }
-    
+
     const browser = await puppeteer.launch({
       executablePath,
       timeout: 60000,
       headless: true,
       args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--single-process',
-        '--no-zygote',
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--single-process",
+        "--no-zygote",
       ],
     });
-    
+
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: 'networkidle2' });
-    
-    // Extract title and content
+    await page.goto(url, { waitUntil: "networkidle2" });
+
+    // Extract title
     const title = await page.title();
-    const content = await page.evaluate(() => {
-      const paragraphs = Array.from(document.querySelectorAll('p')).map(p => p.textContent);
-      const headings = Array.from(document.querySelectorAll('h1, h2, h3')).map(h => h.textContent);
-      return [...headings, ...paragraphs].filter(Boolean).join(' ').trim();
+
+    // Extract meta images in priority order
+    const metaImage = await page.evaluate(() => {
+      // Priority order for meta images
+      const metaSelectors = [
+        'meta[property="og:image"]',           // Open Graph
+        'meta[name="twitter:image"]',          // Twitter Card
+        'meta[property="og:image:secure_url"]',// Secure OG image
+        'meta[itemprop="image"]',             // Schema.org
+        'link[rel="image_src"]',              // Legacy
+        'link[rel="icon"]',                   // Favicon as last resort
+      ];
+
+      for (const selector of metaSelectors) {
+        const element = document.querySelector(selector);
+        const content = element?.getAttribute('content') || element?.getAttribute('href');
+        if (content) return content;
+      }
+      return null;
     });
-    
+
+    // Make URL absolute and validate
+    const imageUrl = metaImage ? new URL(metaImage, url).toString() : null;
+    const finalImageUrl = isValidImageUrl(imageUrl) ? imageUrl : null;
+
+    // Extract content
+    const content = await page.evaluate(() => {
+      const paragraphs = Array.from(document.querySelectorAll("p")).map(
+        (p) => p.textContent
+      );
+      const headings = Array.from(document.querySelectorAll("h1, h2, h3")).map(
+        (h) => h.textContent
+      );
+      return [...headings, ...paragraphs].filter(Boolean).join(" ").trim();
+    });
+
     await browser.close();
-    return { title, content };
+    return { title, content, imageUrl: finalImageUrl };
   } catch (error) {
     console.error("Error scraping URL:", error);
     if (error instanceof Error) {
@@ -152,7 +204,12 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
     } else {
       console.error("An unknown error occurred:", error);
     }
-    return { title: "Failed to scrape", content: `Error: ${error instanceof Error ? error.message : "Unknown error"}` };
+    return {
+      title: "Failed to scrape",
+      content: `Error: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`, imageUrl: null
+    };
   }
 }
 
@@ -160,11 +217,11 @@ const dbconnect = async (): Promise<void> => {
   try {
     await mongoose.connect(process.env.MONGO_URL as string);
     console.log("Connected to MongoDB");
-    
+
     // Initialize Pinecone
     pineconeIndex = await initPinecone();
     console.log("Connected to Pinecone");
-    
+
     app.listen(port, () => {
       console.log(`Server is running on port ${port}`);
     });
@@ -227,74 +284,47 @@ app.post("/api/v1/signup", async (req: Request, res: Response) => {
 
 // -------------------signin-------------------
 
-app.post("/api/v1/signin", async (req: Request, res: Response) => {
-  const { username, password } = req.body;
-
-  const user = await UserModel.findOne({ username });
-  if (!user) {
-    res.status(404).json({ message: "user not found" });
-    return;
-  }
-  if (user === null) {
-    res.status(401).json({ message: "Invalid credentials" });
-    return;
-  }
-  if (user.password) {
-    try {
-      const hashpassword = await bcrypt.compare(password, user.password);
-      if (hashpassword) {
-        if (user._id) {
-          const token = jwt.sign(
-            { id: user._id },
-            process.env.JWT_SECRET as string,
-            { expiresIn: "7days" }
-          );
-          res.status(200).json({ message: "User logged in successfully", token, username });
-        }
-      } else {
-        res.status(401).json({ message: "Invalid credentials" });
-      }
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  } else {
-    res.status(401).json({ message: "Invalid credentials" });
-  }
-});
-
-// -------------------content add with vector embedding-------------------
-
 app.post("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
   const { link, title, type, content } = req.body;
+
   try {
-    let contentToSave = content;
-    let titleToSave = title;
-    
+    let contentToSave = content || "";
+    let titleToSave = title || "";
+    let imageUrl: string | null = null;
+
     if (type === "Url" && link) {
       const scrapedData = await scrapeUrl(link);
-      contentToSave = scrapedData.content;
-      if (!titleToSave) titleToSave = scrapedData.title;
+      
+      if (scrapedData.content) contentToSave = scrapedData.content;
+      if (!titleToSave && scrapedData.title) titleToSave = scrapedData.title;
+      // Validate image URL before saving
+      if (scrapedData.imageUrl && isValidImageUrl(scrapedData.imageUrl)) {
+        imageUrl = scrapedData.imageUrl;
+      }
     }
-    
+
     // Generate timestamp in a human-readable format
     const timestamp = new Date().toLocaleString();
-    
-    // Prepare the text for embedding by including title and timestamp
+
+    // Prepare text for embedding (Ensure it's a valid string)
     const textForEmbedding = `Title: ${titleToSave}\nDate: ${timestamp}\nContent: ${contentToSave}`;
-    
+
+    // Save to MongoDB
     const newContent = await ContentModel.create({
       title: titleToSave,
-      link: link,
-      type: type,
+      link,
+      type,
       content: contentToSave,
+      imageUrl, // ✅ Save scraped image URL
       tag: [],
       userId: req.userId,
-      createdAt: new Date(), // This will be automatic in most MongoDB schemas
+      createdAt: new Date(),
     });
 
-    // Get embedding of the combined text (title + timestamp + content)
+    // Generate vector embedding
     const embedding = await getEmbedding(textForEmbedding);
 
+    // Upsert into Pinecone
     await pineconeIndex.upsert([
       {
         id: newContent._id.toString(),
@@ -304,17 +334,19 @@ app.post("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
           title: titleToSave,
           contentType: type,
           timestamp: timestamp,
-          snippet: contentToSave.substring(0, 100)
-        }
-      }
+          snippet: contentToSave.substring(0, 100),
+          imageUrl: imageUrl || "", // ✅ Store image URL in metadata
+        },
+      },
     ]);
-    
-    res.status(200).json({ message: "content added successfully" });
+
+    res.status(200).json({ message: "Content added successfully", contentId: newContent._id ,imageUrl: imageUrl || null});
   } catch (err) {
-    console.log(err);
+    console.error("Error adding content:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 });
+
 // -------------------content get-------------------
 
 app.get("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
@@ -333,12 +365,24 @@ app.get("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
             title: "Welcome to Conscious!",
             content:
               "This is your default content. Start exploring now! click on Add Memory to add more content",
+              imageUrl: null,
           },
         ],
       });
       return;
     }
-    res.status(200).json({ content });
+    res.status(200).json({
+      content: content.map((item) => ({
+        _id: item._id,
+        title: item.title,
+        type: item.type,
+        content: item.content,
+        link: item.link || null,
+        imageUrl: item.imageUrl || null, // Include imageUrl in the response
+        userId: item.userId,
+        createdAt: item.createdAt,
+      })),
+    });
     return;
   } catch (error) {
     console.log(error);
@@ -349,138 +393,157 @@ app.get("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
 
 // -------------------content delete-------------------
 
-app.delete("/api/v1/content/:contentId", auth, async (req: AuthRequest, res: Response) => {
-  const { contentId } = req.params;
+app.delete(
+  "/api/v1/content/:contentId",
+  auth,
+  async (req: AuthRequest, res: Response) => {
+    const { contentId } = req.params;
 
-  if (!contentId || !mongoose.Types.ObjectId.isValid(contentId)) {
-    res.status(400).json({ error: "Invalid or missing content ID" });
-    return;
-  }
+    if (!contentId || !mongoose.Types.ObjectId.isValid(contentId)) {
+      res.status(400).json({ error: "Invalid or missing content ID" });
+      return;
+    }
 
-  try {
-    // Delete from MongoDB
-    await ContentModel.deleteOne({ _id: contentId, userId: req.userId });
-    
-    // Delete from Pinecone
-    await pineconeIndex.deleteOne(contentId);
-    
-    // Or if you want to delete multiple IDs, use:
-    // await pineconeIndex.deleteMany([contentId]);
-  
-    res.json({ message: "Content deleted successfully" });
-  } catch (error) {
-    console.error("Error deleting content:", error);
-    res.status(500).json({ message: "Error deleting content" });
+    try {
+      // Delete from MongoDB
+      await ContentModel.deleteOne({ _id: contentId, userId: req.userId });
+
+      // Delete from Pinecone
+      await pineconeIndex.deleteOne(contentId);
+
+      // Or if you want to delete multiple IDs, use:
+      // await pineconeIndex.deleteMany([contentId]);
+
+      res.json({ message: "Content deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting content:", error);
+      res.status(500).json({ message: "Error deleting content" });
+    }
   }
-})
+);
 // -------------------search endpoint-------------------
 
-app.post("/api/v1/search", auth, async (req: AuthRequest, res: Response): Promise<void> => {
-  const { query } = req.body as SearchQuery;
-  const userId = req.userId;
-  
-  if (!query || query.trim() === "") {
-    res.status(400).json({ message: "Search query is required" });
-    return;
-  }
-  
-  try {
-    // Get embedding for the query
-    const queryEmbedding = await getEmbedding(query);
-    
-    // Search in vector database for similar content
-    const searchResponse = await pineconeIndex.query({
-      vector: queryEmbedding,
-      topK: 5,
-      includeMetadata: true,
-      filter: {
-        userId: userId?.toString() || ""
-      }
-    });
-    
-    // Extract relevant content from database based on vector search results
-    const contentIds = searchResponse.matches.map((match: any) => match.id);
-    const relevantContent = await ContentModel.find({
-      _id: { $in: contentIds },
-      userId: userId
-    });
-    
-    // Map content to include similarity score
-    const contentWithScores = relevantContent.map((content: any) => {
-      const match = searchResponse.matches.find((m: any) => m.id === content._id.toString());
-      return {
-        ...content.toObject(),
-        similarityScore: match ? match.score : 0
-      };
-    }).sort((a: any, b: any) => b.similarityScore - a.similarityScore).slice(0, 2);;
-    
-    // If no relevant content found
-    if (contentWithScores.length === 0) {
-      res.json({
-        message: "No relevant content found in your second brain for this query.",
-        results: []
-      });
+app.post(
+  "/api/v1/search",
+  auth,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    const { query } = req.body as SearchQuery;
+    const userId = req.userId;
+
+    if (!query || query.trim() === "") {
+      res.status(400).json({ message: "Search query is required" });
       return;
     }
-    
-    // Rest of your code remains the same...
-    let context = "Below is the relevant information from the user's second brain:\n\n";
-    contentWithScores.forEach((item: any, index: number) => {
-      context += `[Content ${index + 1}]\nTitle: ${item.title}\nType: ${item.type}\n`;
-      if (item.link) context += `Link: ${item.link}\n`;
-      context += `Content: ${item.content}\n\n`;
-    });
-    
-    const prompt = `${context}\n\nUser query: "${query}"\n\nBased on the information above from the user's second brain, please provide a helpful and concise response to their query. If the information doesn't contain a direct answer, try to extract relevant insights that might be helpful. if any questions asked also try to answer it.`;
-    const result = await model.generateContent({ contents: [{ role: "user", parts: [{ text: prompt }] }] });
 
+    try {
+      // Get embedding for the query
+      const queryEmbedding = await getEmbedding(query);
 
-    const answer = result?.response?.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
+      // Search in vector database for similar content
+      const searchResponse = await pineconeIndex.query({
+        vector: queryEmbedding,
+        topK: 5,
+        includeMetadata: true,
+        filter: {
+          userId: userId?.toString() || "",
+        },
+      });
 
-    
-    res.json({
-      message: "Search results found",
-      relevantContent: contentWithScores,
-      answer: answer
-    });
-    
+      // Extract relevant content from database based on vector search results
+      const contentIds = searchResponse.matches.map((match: any) => match.id);
+      const relevantContent = await ContentModel.find({
+        _id: { $in: contentIds },
+        userId: userId,
+      });
 
-  
-    
-  } catch (error) {
-    console.error("Search error:", error);
-    res.status(500).json({ message: "Error processing search request" });
+      // Map content to include similarity score
+      const contentWithScores = relevantContent
+        .map((content: any) => {
+          const match = searchResponse.matches.find(
+            (m: any) => m.id === content._id.toString()
+          );
+          return {
+            ...content.toObject(),
+            similarityScore: match ? match.score : 0,
+          };
+        })
+        .sort((a: any, b: any) => b.similarityScore - a.similarityScore)
+        .slice(0, 2);
+
+      // If no relevant content found
+      if (contentWithScores.length === 0) {
+        res.json({
+          message:
+            "No relevant content found in your second brain for this query.",
+          results: [],
+        });
+        return;
+      }
+
+      // Rest of your code remains the same...
+      let context =
+        "Below is the relevant information from the user's second brain:\n\n";
+      contentWithScores.forEach((item: any, index: number) => {
+        context += `[Content ${index + 1}]\nTitle: ${item.title}\nType: ${
+          item.type
+        }\n`;
+        if (item.link) context += `Link: ${item.link}\n`;
+        context += `Content: ${item.content}\n\n`;
+      });
+
+      const prompt = `${context}\n\nUser query: "${query}"\n\nBased on the information above from the user's second brain, please provide a helpful and concise response to their query. If the information doesn't contain a direct answer, try to extract relevant insights that might be helpful. if any questions asked also try to answer it.`;
+      const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+      });
+
+      const answer =
+        result?.response?.candidates?.[0]?.content?.parts?.[0]?.text ||
+        "No response generated.";
+
+      res.json({
+        message: "Search results found",
+        relevantContent: contentWithScores,
+        answer: answer,
+      });
+    } catch (error) {
+      console.error("Search error:", error);
+      res.status(500).json({ message: "Error processing search request" });
+    }
   }
-});
+);
 // -------------------brain share-------------------
 
-app.post("/api/v1/brain/share", auth, async (req: AuthRequest, res: Response) => {
-  const share = req.body.share;
-  if (share) {
-    const content = await LinkModel.findOne({ userId: req.userId });
-    if (content) {
-      res.json({ hash: content.hash });
-      return;
+app.post(
+  "/api/v1/brain/share",
+  auth,
+  async (req: AuthRequest, res: Response) => {
+    const share = req.body.share;
+    if (share) {
+      const content = await LinkModel.findOne({ userId: req.userId });
+      if (content) {
+        res.json({ hash: content.hash });
+        return;
+      }
+      const hash = random(10);
+      await LinkModel.create({
+        userId: req.userId,
+        hash: hash,
+      });
+
+      res.json({
+        hash,
+      });
+    } else {
+      await LinkModel.deleteOne({
+        userId: req.userId,
+      });
+
+      res.json({
+        message: "Removed link",
+      });
     }
-    const hash = random(10);
-    await LinkModel.create({
-      userId: req.userId,
-      hash: hash,
-    });
-
-    res.json({
-      hash,
-    });
-  } else {
-    await LinkModel.deleteOne({
-      userId: req.userId,
-    });
-
-    res.json({
-      message: "Removed link",
-    });
   }
-});
+);
 
 app.get("/api/v1/brain/:shareLink", async (req: Request, res: Response) => {
   const hash = req.params.shareLink;
@@ -495,7 +558,7 @@ app.get("/api/v1/brain/:shareLink", async (req: Request, res: Response) => {
     });
     return;
   }
-  
+
   const content = await ContentModel.find({
     userId: link.userId,
   });
