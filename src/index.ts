@@ -284,6 +284,43 @@ app.post("/api/v1/signup", async (req: Request, res: Response) => {
 
 // -------------------signin-------------------
 
+app.post("/api/v1/signin", async (req: Request, res: Response) => {
+  const { username, password } = req.body;
+
+  const user = await UserModel.findOne({ username });
+  if (!user) {
+    res.status(404).json({ message: "user not found" });
+    return;
+  }
+  if (user === null) {
+    res.status(401).json({ message: "Invalid credentials" });
+    return;
+  }
+  if (user.password) {
+    try {
+      const hashpassword = await bcrypt.compare(password, user.password);
+      if (hashpassword) {
+        if (user._id) {
+          const token = jwt.sign(
+            { id: user._id },
+            process.env.JWT_SECRET as string,
+            { expiresIn: "7days" }
+          );
+          res.status(200).json({ message: "User logged in successfully", token, username });
+        }
+      } else {
+        res.status(401).json({ message: "Invalid credentials" });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  } else {
+    res.status(401).json({ message: "Invalid credentials" });
+  }
+});
+
+// -------------------content add with vector embedding------
+
 app.post("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
   const { link, title, type, content } = req.body;
 
