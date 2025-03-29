@@ -15,28 +15,7 @@ import { Index, Pinecone } from "@pinecone-database/pinecone";
 dotenv.config();
 
 // Type definitions
-interface User {
-  _id: mongoose.Types.ObjectId;
-  username: string;
-  password: string;
-}
 
-interface Content {
-  _id: mongoose.Types.ObjectId;
-  title: string;
-  link?: string;
-  type: string;
-  content: string;
-  tag: string[];
-  userId: mongoose.Types.ObjectId;
-  imageUrl?: string;
-}
-
-interface Link {
-  _id: mongoose.Types.ObjectId;
-  userId: mongoose.Types.ObjectId;
-  hash: string;
-}
 
 interface AuthRequest extends Request {
   userId?: string;
