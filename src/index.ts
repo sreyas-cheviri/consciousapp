@@ -11,6 +11,9 @@ import cors from "cors";
 import puppeteer from "puppeteer";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Index, Pinecone } from "@pinecone-database/pinecone";
+import passport from 'passport';
+import session from 'express-session';
+import { setupGoogleAuth, generateTokenForGoogleUser } from './googleAuth';
 
 dotenv.config();
 
@@ -66,6 +69,21 @@ app.use(
     credentials: true,
   })
 );
+
+// Set up session middleware (required for passport)
+app.use(session({
+  secret: process.env.SESSION_SECRET || process.env.JWT_SECRET as string,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: process.env.NODE_ENV === 'production' }
+}));
+
+// Set up passport middleware
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Set up Google authentication
+setupGoogleAuth();
 
 const port = process.env.PORT || 3000;
 
@@ -224,6 +242,7 @@ const dbconnect = async (): Promise<void> => {
 
     app.listen(port, () => {
       console.log(`Server is running on port ${port}`);
+      console.log(`Google Auth URL: http://localhost:${port}/api/v1/auth/google`);
     });
   } catch (error) {
     console.log("Error connecting to db");
@@ -231,6 +250,64 @@ const dbconnect = async (): Promise<void> => {
     process.exit(1);
   }
 };
+// Google Auth Routes 
+// Update the Google auth route to include prompt and access_type parameters
+app.get('/api/v1/auth/google', 
+  (req, res, next) => {
+    const authOptions = {
+      scope: ['profile', 'email'],
+      prompt: 'select_account',  // Force account selection
+      accessType: 'online'
+    };
+    
+    // Clear any existing session to ensure fresh authentication
+    if (req.session) {
+      req.session.destroy(() => {
+        passport.authenticate('google', authOptions)(req, res, next);
+      });
+    } else {
+      passport.authenticate('google', authOptions)(req, res, next);
+    }
+  }
+);
+// Google auth callback route
+  app.get('/api/v1/auth/google/callback', 
+  passport.authenticate('google', { failureRedirect: '/api/v1/auth/failure' }),
+  (req: any, res: Response): void => {
+    if (!req.user) {
+      res.status(401).json({ message: 'Authentication failed' });
+      return;
+    }
+    
+    // Check if this was a new user created during this authentication
+    const isNewUser = req.user.isNewAccount || false;
+    
+    const token = generateTokenForGoogleUser(req.user._id);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}/auth-callback?token=${token}&username=${encodeURIComponent(req.user.username)}&isNewUser=${isNewUser}`);
+  }
+);
+
+app.get('/api/v1/auth/failure', (req: Request, res: Response) => {
+  res.status(401).json({ message: 'Google authentication failed' });
+});
+
+// Add a test endpoint to verify authentication
+app.get('/api/v1/auth/test', auth, (req: AuthRequest, res: Response) => {
+  res.json({
+    message: 'Authentication is working!',
+    userId: req.userId
+  });
+});
+
+// Log registered google routes
+console.log('Routes registered:');
+app._router.stack.forEach((r: any) => {
+  if (r.route && r.route.path) {
+    console.log(`${Object.keys(r.route.methods)} ${r.route.path}`);
+  }
+});
+
 
 dbconnect();
 
@@ -617,4 +694,6 @@ app.get("/api/v1/brain/:shareLink", async (req: Request, res: Response) => {
   });
 });
 
+
+// Remove the export default app line
 export default app;

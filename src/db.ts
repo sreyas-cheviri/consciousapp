@@ -3,7 +3,11 @@ import mongoose, { Types } from "mongoose";
 
 const UserSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
-  password: { type: String, require: true },
+  password: { type: String, required: true },
+  email: { type: String, sparse: true },
+  googleId: { type: String, sparse: true, unique: true },
+  displayName: { type: String },
+  profilePicture: { type: String }
 });
 
 const ContentSchema = new mongoose.Schema({
