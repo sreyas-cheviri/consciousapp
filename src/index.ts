@@ -126,6 +126,7 @@ function isValidImageUrl(url: string | null): boolean {
 // Function to scrape URL content
 
 async function scrapeUrl(url: string): Promise<ScrapedData> {
+  let browser;
   try {
     console.log(`Node environment: ${process.env.NODE_ENV}`);
     console.log(
@@ -141,9 +142,9 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
       console.log(`Using bundled Chrome at: ${executablePath}`);
     }
 
-    const browser = await puppeteer.launch({
+    browser = await puppeteer.launch({
       executablePath,
-      timeout: 60000,
+      timeout: 120000, // Increase to 2 minutes
       headless: true,
       args: [
         "--no-sandbox",
@@ -155,7 +156,19 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
     });
 
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: "networkidle2" });
+
+    // Set longer timeouts for page operations
+    await page.setDefaultNavigationTimeout(120000); // 2 minutes
+    await page.setDefaultTimeout(120000);
+
+    // Navigate with longer timeout and wait for network to be idle
+    await page.goto(url, { 
+      waitUntil: ["networkidle0", "domcontentloaded"], 
+      timeout: 120000 
+    });
+
+    // Add small delay to ensure dynamic content loads
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Extract title
     const title = await page.title();
@@ -195,10 +208,16 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
       return [...headings, ...paragraphs].filter(Boolean).join(" ").trim();
     });
 
-    await browser.close();
     return { title, content, imageUrl: finalImageUrl };
   } catch (error) {
     console.error("Error scraping URL:", error);
+    if (error instanceof Error && error.message.includes('timeout')) {
+      return {
+        title: "Scraping Failed - Timeout",
+        content: "The page took too long to load. This might be due to slow connection or complex page content.",
+        imageUrl: null
+      };
+    }
     if (error instanceof Error) {
       console.error(error.stack);
     } else {
@@ -210,6 +229,10 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
         error instanceof Error ? error.message : "Unknown error"
       }`, imageUrl: null
     };
+  } finally {
+    if (browser) {
+      await browser.close().catch(console.error);
+    }
   }
 }
 
