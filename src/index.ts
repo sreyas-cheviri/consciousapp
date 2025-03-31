@@ -180,7 +180,7 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
         'meta[property="og:image:secure_url"]', // Secure OG image
         'meta[itemprop="image"]', // Schema.org
         'link[rel="image_src"]', // Legacy
-        'link[rel="icon"]', // Favicon as last resort
+        // 'link[rel="icon"]', 
       ];
 
       for (const selector of metaSelectors) {
