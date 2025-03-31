@@ -6,12 +6,13 @@ import mongoose from "mongoose";
 import { UserModel, ContentModel, LinkModel } from "./db";
 import dotenv from "dotenv";
 import { auth } from "./middleware";
-import { random } from "./utils";
+// import { random } from "./utils";
 import cors from "cors";
 import puppeteer from "puppeteer";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Index, Pinecone } from "@pinecone-database/pinecone";
-
+import {v4 as uuidv4} from 'uuid';
+ 
 dotenv.config();
 
 // Type definitions
@@ -49,7 +50,7 @@ interface SearchQuery {
 interface ScrapedData {
   title: string;
   content: string;
-  imageUrl?: string | null; // Allow imageUrl to be null or undefined
+  imageUrl?: string | null;
 }
 
 // Initialize Express
@@ -75,7 +76,6 @@ app.use(express.json());
 const initPinecone = async () => {
   const pinecone = new Pinecone({
     apiKey: process.env.PINECONE_API_KEY as string,
-    // Note: environment is no longer needed in the newer SDK
   });
 
   // Get the index directly from the pinecone instance
@@ -89,7 +89,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 // Function to get embeddings from Gemini
-// Update your getEmbedding function
+
 async function getEmbedding(text: string): Promise<number[]> {
   const embeddingModel = genAI.getGenerativeModel({ model: "embedding-001" });
   const result = await embeddingModel.embedContent(text);
@@ -110,11 +110,10 @@ async function getEmbedding(text: string): Promise<number[]> {
   throw new Error("Failed to get valid embedding");
 }
 
-// Add this helper function near the top with other utility functions
 function isValidImageUrl(url: string | null): boolean {
   if (!url) return false;
   // Skip blob URLs as they are temporary and won't work when stored
-  if (url.startsWith('blob:')) return false;
+  if (url.startsWith("blob:")) return false;
   try {
     new URL(url);
     return true;
@@ -124,7 +123,6 @@ function isValidImageUrl(url: string | null): boolean {
 }
 
 // Function to scrape URL content
-
 async function scrapeUrl(url: string): Promise<ScrapedData> {
   let browser;
   try {
@@ -162,9 +160,9 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
     await page.setDefaultTimeout(120000);
 
     // Navigate with longer timeout and wait for network to be idle
-    await page.goto(url, { 
-      waitUntil: ["networkidle0", "domcontentloaded"], 
-      timeout: 120000 
+    await page.goto(url, {
+      waitUntil: ["networkidle0", "domcontentloaded"],
+      timeout: 120000,
     });
 
     // Add small delay to ensure dynamic content loads
@@ -177,17 +175,18 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
     const metaImage = await page.evaluate(() => {
       // Priority order for meta images
       const metaSelectors = [
-        'meta[property="og:image"]',           // Open Graph
-        'meta[name="twitter:image"]',          // Twitter Card
-        'meta[property="og:image:secure_url"]',// Secure OG image
-        'meta[itemprop="image"]',             // Schema.org
-        'link[rel="image_src"]',              // Legacy
-        'link[rel="icon"]',                   // Favicon as last resort
+        'meta[property="og:image"]', // Open Graph
+        'meta[name="twitter:image"]', // Twitter Card
+        'meta[property="og:image:secure_url"]', // Secure OG image
+        'meta[itemprop="image"]', // Schema.org
+        'link[rel="image_src"]', // Legacy
+        'link[rel="icon"]', // Favicon as last resort
       ];
 
       for (const selector of metaSelectors) {
         const element = document.querySelector(selector);
-        const content = element?.getAttribute('content') || element?.getAttribute('href');
+        const content =
+          element?.getAttribute("content") || element?.getAttribute("href");
         if (content) return content;
       }
       return null;
@@ -211,11 +210,12 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
     return { title, content, imageUrl: finalImageUrl };
   } catch (error) {
     console.error("Error scraping URL:", error);
-    if (error instanceof Error && error.message.includes('timeout')) {
+    if (error instanceof Error && error.message.includes("timeout")) {
       return {
         title: "Scraping Failed - Timeout",
-        content: "The page took too long to load. This might be due to slow connection or complex page content.",
-        imageUrl: null
+        content:
+          "The page took too long to load. This might be due to slow connection or complex page content.",
+        imageUrl: null,
       };
     }
     if (error instanceof Error) {
@@ -227,7 +227,8 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
       title: "Failed to scrape",
       content: `Error: ${
         error instanceof Error ? error.message : "Unknown error"
-      }`, imageUrl: null
+      }`,
+      imageUrl: null,
     };
   } finally {
     if (browser) {
@@ -241,7 +242,6 @@ const dbconnect = async (): Promise<void> => {
     await mongoose.connect(process.env.MONGO_URL as string);
     console.log("Connected to MongoDB");
 
-    // Initialize Pinecone
     pineconeIndex = await initPinecone();
     console.log("Connected to Pinecone");
 
@@ -258,7 +258,7 @@ const dbconnect = async (): Promise<void> => {
 dbconnect();
 
 app.get("/", (_req: Request, res: Response) => {
-  res.send("Second Brain API is running!");
+  res.send("server health check - conscious running!");
 });
 
 // -------------------signup-------------------
@@ -278,7 +278,7 @@ app.post("/api/v1/signup", async (req: Request, res: Response) => {
         message: "Password must contain at least one special character",
       }),
   });
-  
+
   const validInput = inputzod.safeParse(req.body);
   if (!validInput.success) {
     const errorMessage = validInput.error.errors.map((e) => e.message);
@@ -329,7 +329,9 @@ app.post("/api/v1/signin", async (req: Request, res: Response) => {
             process.env.JWT_SECRET as string,
             { expiresIn: "7days" }
           );
-          res.status(200).json({ message: "User logged in successfully", token, username });
+          res
+            .status(200)
+            .json({ message: "User logged in successfully", token, username });
         }
       } else {
         res.status(401).json({ message: "Invalid credentials" });
@@ -354,7 +356,7 @@ app.post("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
 
     if (type === "Url" && link) {
       const scrapedData = await scrapeUrl(link);
-      
+
       if (scrapedData.content) contentToSave = scrapedData.content;
       if (!titleToSave && scrapedData.title) titleToSave = scrapedData.title;
       // Validate image URL before saving
@@ -400,7 +402,13 @@ app.post("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
       },
     ]);
 
-    res.status(200).json({ message: "Content added successfully", contentId: newContent._id ,imageUrl: imageUrl || null});
+    res
+      .status(200)
+      .json({
+        message: "Content added successfully",
+        contentId: newContent._id,
+        imageUrl: imageUrl || null,
+      });
   } catch (err) {
     console.error("Error adding content:", err);
     res.status(500).json({ message: "Internal server error" });
@@ -425,7 +433,7 @@ app.get("/api/v1/content", auth, async (req: AuthRequest, res: Response) => {
             title: "Welcome to Conscious!",
             content:
               "This is your default content. Start exploring now! click on Add Memory to add more content",
-              imageUrl: null,
+            imageUrl: null,
           },
         ],
       });
@@ -584,7 +592,7 @@ app.post(
         res.json({ hash: content.hash });
         return;
       }
-      const hash = random(10);
+      const hash = uuidv4().slice(0,10);
       await LinkModel.create({
         userId: req.userId,
         hash: hash,
