@@ -142,7 +142,7 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
 
     browser = await puppeteer.launch({
       executablePath,
-      timeout: 120000, // Increase to 2 minutes
+      timeout: 30000, // Initial 30 second timeout
       headless: true,
       args: [
         "--no-sandbox",
@@ -155,18 +155,38 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
 
     const page = await browser.newPage();
 
-    // Set longer timeouts for page operations
-    await page.setDefaultNavigationTimeout(120000); // 2 minutes
-    await page.setDefaultTimeout(120000);
+    // Set shorter timeouts for page operations
+    await page.setDefaultNavigationTimeout(30000); // 30 seconds
+    await page.setDefaultTimeout(30000);
 
-    // Navigate with longer timeout and wait for network to be idle
+    // Navigate with shorter timeout and wait for DOM content to load
     await page.goto(url, {
-      waitUntil: ["networkidle0", "domcontentloaded"],
-      timeout: 120000,
+      waitUntil: ["domcontentloaded"], // Changed from networkidle0
+      timeout: 30000,
     });
 
-    // Add small delay to ensure dynamic content loads
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // Process content in chunks
+    const content = await page.evaluate(() => {
+      const CHUNK_SIZE = 5000; // Process 5000 characters at a time
+      let allContent = '';
+      
+      // Get text content in chunks
+      const processChunk = (elements: Element[], startIndex: number) => {
+        const chunk = elements.slice(startIndex, startIndex + 10)
+          .map(el => el.textContent)
+          .filter(Boolean)
+          .join(" ");
+        return chunk;
+      };
+
+      const elements = Array.from(document.querySelectorAll('p, h1, h2, h3'));
+      for(let i = 0; i < elements.length; i += 10) {
+        allContent += processChunk(elements, i);
+        if(allContent.length > CHUNK_SIZE * 3) break; // Limit total content
+      }
+
+      return allContent.trim();
+    });
 
     // Extract title
     const title = await page.title();
@@ -196,17 +216,6 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
     const imageUrl = metaImage ? new URL(metaImage, url).toString() : null;
     const finalImageUrl = isValidImageUrl(imageUrl) ? imageUrl : null;
 
-    // Extract content
-    const content = await page.evaluate(() => {
-      const paragraphs = Array.from(document.querySelectorAll("p")).map(
-        (p) => p.textContent
-      );
-      const headings = Array.from(document.querySelectorAll("h1, h2, h3")).map(
-        (h) => h.textContent
-      );
-      return [...headings, ...paragraphs].filter(Boolean).join(" ").trim();
-    });
-
     return { title, content, imageUrl: finalImageUrl };
   } catch (error) {
     console.error("Error scraping URL:", error);
@@ -235,6 +244,32 @@ async function scrapeUrl(url: string): Promise<ScrapedData> {
       await browser.close().catch(console.error);
     }
   }
+}
+
+async function processContent(content: string): Promise<string> {
+  // Break content into smaller chunks for LLM processing
+  const CHUNK_SIZE = 2000;
+  const chunks = [];
+  
+  for(let i = 0; i < content.length; i += CHUNK_SIZE) {
+    chunks.push(content.slice(i, i + CHUNK_SIZE));
+  }
+
+  // Process each chunk and extract key information
+  let processedContent = '';
+  for(const chunk of chunks) {
+    const summary = await model.generateContent({
+      contents: [{
+        role: "user",
+        parts: [{
+          text: `Summarize the key points from this text: ${chunk}`
+        }]
+      }]
+    });
+    processedContent += summary.response?.text() + '\n';
+  }
+
+  return processedContent;
 }
 
 const dbconnect = async (): Promise<void> => {
