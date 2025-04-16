@@ -5,13 +5,11 @@ import { initPinecone } from "./config/pinecone";
 
 const startServer = async (): Promise<void> => {
   try {
-    // Connect to MongoDB
+  
     await connectDatabase();
-    
-    // Initialize Pinecone
+  
     await initPinecone();
-    
-    // Start server
+  
     app.listen(config.port, () => {
       console.log(`Server is running on port ${config.port}`);
     });

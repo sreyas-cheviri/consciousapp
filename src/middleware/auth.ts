@@ -2,7 +2,7 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 import { Request, Response, NextFunction } from "express";
 import { config } from "../config/env";
 
-// Add type declaration for Request.userId
+
 declare global {
   namespace Express {
     interface Request {

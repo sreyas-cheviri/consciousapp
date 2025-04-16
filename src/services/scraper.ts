@@ -5,7 +5,6 @@ import { config } from "../config/env";
 // Helper function to validate image URLs
 export function isValidImageUrl(url: string | null): boolean {
   if (!url) return false;
-  // Skip blob URLs as they are temporary and won't work when stored
   if (url.startsWith("blob:")) return false;
   try {
     new URL(url);

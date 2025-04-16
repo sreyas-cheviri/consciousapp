@@ -132,9 +132,8 @@ export const deleteContent = async (req: AuthRequest, res: Response): Promise<vo
   }
 
   try {
-    // Delete from MongoDB
+   
     await ContentModel.deleteOne({ _id: contentId, userId: req.userId });
-    
     // Delete from Pinecone
     const pineconeIndex = getPineconeIndex();
     await pineconeIndex.deleteOne(contentId);
