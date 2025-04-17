@@ -9,7 +9,7 @@ export interface User {
 
 export interface Content {
   _id: mongoose.Types.ObjectId;
-  title: string;
+  title?: string;
   link?: string;
   type: string;
   content: string;
