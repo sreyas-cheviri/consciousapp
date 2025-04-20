@@ -1,16 +1,16 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { config } from "../config/env";
 
-// Initialize Gemini API
+
 const genAI = new GoogleGenerativeAI(config.geminiApiKey);
 export const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-// Function to get embeddings from Gemini
+
 export async function getEmbedding(text: string): Promise<number[]> {
   const embeddingModel = genAI.getGenerativeModel({ model: "embedding-001" });
   const result = await embeddingModel.embedContent(text);
 
-  // Try to access the values property if it exists
+  
   if (result.embedding && typeof result.embedding === "object") {
     if (
       "values" in result.embedding &&

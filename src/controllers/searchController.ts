@@ -69,7 +69,7 @@ export const search = async (req: AuthRequest, res: Response): Promise<void> => 
         item.type
       }\n`;
       if (item.link) context += `Link: ${item.link}\n`;
-      context += `Content: ${item.content}\n\n`;
+      context += `Content: ${item.content}\n\n `;
     });
 
     const prompt = `${context}\n\nUser query: "${query}"\n\nBased on the information above from the user's second brain, please provide a helpful and concise response to their query. If the information doesn't contain a direct answer, try to extract relevant insights that might be helpful. if any is questions asked, try to answer it with your knowledege also.`;

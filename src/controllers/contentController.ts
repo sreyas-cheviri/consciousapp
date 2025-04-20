@@ -4,79 +4,81 @@ import { ContentModel } from "../models";
 import { AuthRequest } from "../types";
 import { getPineconeIndex } from "../config/pinecone";
 import { getEmbedding } from "../services/embeddings";
-import { scrapeUrl, isValidImageUrl } from "../services/scraper";
-import { contentSchema } from "../utils/validation";
+
+import { ContentFetcher } from '../services/mediaHandlers';
+
+export interface YouTubeMetadata {
+  title: string;
+  description: string;
+  thumbnailUrl: string;
+}
 
 export const addContent = async (req: AuthRequest, res: Response): Promise<void> => {
-  const validation = contentSchema.safeParse(req.body);
-  if (!validation.success) {
-    res.status(400).json({ message: "Invalid input format", errors: validation.error.errors });
-    return;
-  }
-
-  const { link, title, type, content } = req.body;
+  const { link, title, content } = req.body;
 
   try {
     let contentToSave = content || "";
     let titleToSave = title || "";
     let imageUrl: string | null = null;
+    let metadata;
 
-    if (type === "Url" && link) {
-      const scrapedData = await scrapeUrl(link);
-
-      if (scrapedData.content) contentToSave = scrapedData.content;
-      if (!titleToSave && scrapedData.title) titleToSave = scrapedData.title;
-      // Validate image URL before saving
-      if (scrapedData.imageUrl && isValidImageUrl(scrapedData.imageUrl)) {
-        imageUrl = scrapedData.imageUrl;
+    if (link) {
+      // Handle URLs
+      if (link.match(/youtube\.com|youtu\.be/i)) {
+        metadata = await ContentFetcher.fetchYouTube(link);
+      } 
+      else if (link.match(/twitter\.com|x\.com/i)) {
+        metadata = await ContentFetcher.fetchTwitter(link);
       }
+      else {
+        metadata = await ContentFetcher.fetchWebsite(link);
+      }
+
+      titleToSave = titleToSave || metadata.title;
+      contentToSave = metadata.content;
+      imageUrl = metadata.thumbnail;
+    } else {
+    
+      metadata = await ContentFetcher.handleNote(titleToSave, contentToSave);
+      titleToSave = metadata.title;
+      contentToSave = metadata.content;
     }
 
-    // Generate timestamp in a human-readable format
     const timestamp = new Date().toLocaleString();
-
-    // Prepare text for embedding (Ensure it's a valid string)
     const textForEmbedding = `Title: ${titleToSave}\nDate: ${timestamp}\nContent: ${contentToSave}`;
 
-    // Save to MongoDB
     const newContent = await ContentModel.create({
       title: titleToSave,
-      link,
-      type,
+      link: link || null,
+      type: link ? "Url" : "Note",
       content: contentToSave,
       imageUrl,
       tag: [],
       userId: req.userId,
-      createdAt: new Date(),
+      createdAt: new Date()
     });
 
-    // Generate vector embedding
     const embedding = await getEmbedding(textForEmbedding);
     const pineconeIndex = getPineconeIndex();
 
-    // Upsert into Pinecone
-    await pineconeIndex.upsert([
-      {
-        id: newContent._id.toString(),
-        values: embedding,
-        metadata: {
-          userId: req.userId?.toString() || "",
-          title: titleToSave,
-          contentType: type,
-          timestamp: timestamp,
-          snippet: contentToSave.substring(0, 100),
-          imageUrl: imageUrl || "",
-        },
-      },
-    ]);
+    await pineconeIndex.upsert([{
+      id: newContent._id.toString(),
+      values: embedding,
+      metadata: {
+        userId: req.userId?.toString() || "",
+        title: titleToSave,
+        contentType: link ? "Url" : "Note",
+        timestamp,
+        snippet: contentToSave.substring(0, 100),
+        imageUrl: imageUrl || ""
+      }
+    }]);
 
-    res
-      .status(200)
-      .json({
-        message: "Content added successfully",
-        contentId: newContent._id,
-        imageUrl: imageUrl || null,
-      });
+    res.status(200).json({
+      message: "Content added successfully",
+      contentId: newContent._id,
+      imageUrl
+    });
   } catch (err) {
     console.error("Error adding content:", err);
     res.status(500).json({ message: "Internal server error" });
@@ -99,7 +101,8 @@ export const getContent = async (req: AuthRequest, res: Response): Promise<void>
             title: "Welcome to Conscious!",
             content:
               "This is your default content. Start exploring now! click on Add Memory to add more content",
-            imageUrl: null
+            imageUrl: null,
+            createdAt: Date.now()
           },
         ],
       });
