@@ -4,6 +4,7 @@ export const signupSchema = z.object({
   username: z
     .string()
     .min(3, { message: "Username must be at least 3 characters long " })
+    .regex(/^S*$/,{message : "Spaces are not allowed in user name"})
     .max(12, { message: "Username must be at most 12 characters long " }),
 
   password: z
@@ -12,6 +13,9 @@ export const signupSchema = z.object({
     .max(12, { message: "Password must be at most 12 characters long " })
     .regex(/[!@#$%^&*(),.?":{}|<>]/, {
       message: "Password must contain at least one special character",
+    })
+    .refine((val)=>[...val].some(char => char >= 'A' && char <= 'Z'),{
+      message : "Must include at least one capital letter"
     }),
 });
 
