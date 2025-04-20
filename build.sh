@@ -42,4 +42,4 @@ apt-get update && apt-get install -y \
     xdg-utils
 
 # Build TypeScript project
-npm run build
+npm run install
