@@ -4,19 +4,18 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import app from "./app";
-import { config } from "./config/env";
 import { connectDatabase } from "./config/db";
 import { initPinecone } from "./config/pinecone";
 
+const PORT = process.env.PORT || 3000;
+
 const startServer = async (): Promise<void> => {
   try {
-  
     await connectDatabase();
-  
     await initPinecone();
   
-    app.listen(config.port, () => {
-      console.log(`Server is running on port ${config.port}`);
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
     });
   } catch (error) {
     console.error("Failed to start server:", error);

@@ -1,15 +1,14 @@
 import { Index, Pinecone } from "@pinecone-database/pinecone";
-import { config } from "./env";
 
 let pineconeIndex: Index;
 
 export const initPinecone = async (): Promise<Index> => {
   try {
     const pinecone = new Pinecone({
-      apiKey: config.pineconeApiKey,
+      apiKey: process.env.PINECONE_API_KEY || '',
     });
     
-    pineconeIndex = pinecone.index(config.pineconeIndex);
+    pineconeIndex = pinecone.index(process.env.PINECONE_INDEX || '');
     console.log("Connected to Pinecone");
     return pineconeIndex;
   } catch (error) {

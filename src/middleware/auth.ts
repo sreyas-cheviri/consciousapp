@@ -1,6 +1,5 @@
 import jwt, { JwtPayload } from "jsonwebtoken";
 import { Request, Response, NextFunction } from "express";
-import { config } from "../config/env";
 
 
 declare global {
@@ -22,7 +21,7 @@ export const auth = (req: Request, res: Response, next: NextFunction): void => {
     
     const decodedToken = jwt.verify(
       token as string,
-      config.jwtSecret
+      process.env.JWT_SECRET || ''
     ) as JwtPayload;
 
     if (decodedToken && decodedToken.id) {
