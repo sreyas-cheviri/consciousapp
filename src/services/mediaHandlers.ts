@@ -59,25 +59,25 @@ export const fetchYouTube = async (url: string): Promise<ContentMetadata> => {
 };
 
 export const fetchTwitter = async (url: string): Promise<ContentMetadata> => {
-  const browser = await initBrowser();
+  const browser = await puppeteer.launch({ headless: true });
   try {
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    await page.goto(url, { waitUntil: 'networkidle2' });
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
     await page.waitForSelector('body');
 
     const metadata = await page.evaluate(() => {
       const tweetText = document.querySelector('article div[data-testid="tweetText"]')?.textContent?.trim() || 'No tweet content';
       const author = document.querySelector('article a[role="link"] span')?.textContent?.trim() || 'Unknown';
-      const image = document.querySelector('article img[src*="media"]')?.getAttribute('src') || null;
+     
       
-      return { author, tweetText, image };
+      return { author, tweetText };
     });
 
     return {
       title: `Tweet by ${metadata.author}`,
       content: `${metadata.tweetText}\n\n${url}`,
-      thumbnail: metadata.image
+      thumbnail: null,
     };
   } catch (error) {
     console.error('Twitter fetching error:', error);
@@ -88,11 +88,11 @@ export const fetchTwitter = async (url: string): Promise<ContentMetadata> => {
 };
 
 export const fetchWebsite = async (url: string): Promise<ContentMetadata> => {
-  const browser = await initBrowser();
+  const browser = await puppeteer.launch({ headless: true, args:["--ignore-certificate-errors"] });
   try {
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    await page.goto(url, { waitUntil: 'networkidle2' });
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000  });
     await page.waitForSelector('body');
 
     return await page.evaluate(() => {
