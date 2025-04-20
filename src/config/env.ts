@@ -11,7 +11,7 @@ export const config = {
   puppeteerExecutablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
   nodeEnv: process.env.NODE_ENV || 'development',
   cors: {
-    origins: [
+    origin: [
       "https://consciousapp.vercel.app",
       "https://cronify-web-rho.vercel.app",
       "http://localhost:5173",
