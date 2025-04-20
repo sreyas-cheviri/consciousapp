@@ -8,13 +8,12 @@ import shareRoutes from "./routes/shareRoutes";
 const app = express();
 
 
-app.use(
-  cors({
-    origin: config.cors.origin,
-    methods: config.cors.methods,
-    credentials: true,
-  })
-);
+app.options("*", cors({
+  origin: config.cors.origin,
+  methods: config.cors.methods,
+  credentials: true
+}));
+
 
 app.use(express.json());
 
