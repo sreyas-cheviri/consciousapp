@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
-chmod +x "$0"
-# Install dependencies for Puppeteer
+# Make sure script execution doesn't fail
+set -e
+
+echo "Installing system dependencies for Puppeteer..."
 apt-get update && apt-get install -y \
     ca-certificates \
     fonts-liberation \
@@ -41,5 +43,8 @@ apt-get update && apt-get install -y \
     wget \
     xdg-utils
 
-# Build TypeScript project
-npm  install
+echo "Installing Node.js dependencies..."
+npm install
+
+echo "Explicitly installing Chrome for Puppeteer..."
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false npx puppeteer browsers install chrome
