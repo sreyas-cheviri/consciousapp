@@ -60,8 +60,7 @@ export const fetchYouTube = async (url: string): Promise<ContentMetadata> => {
 
 export const fetchTwitter = async (url: string): Promise<ContentMetadata> => {
   const browser = await puppeteer.launch({
-    headless: true,
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome',
+    headless: true,  // Using boolean true for compatibility
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
@@ -105,8 +104,7 @@ export const fetchTwitter = async (url: string): Promise<ContentMetadata> => {
 export const fetchWebsite = async (url: string): Promise<ContentMetadata> => {
 
   const browser = await puppeteer.launch({
-    headless: true,
-    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome',
+    headless: true,  // Use boolean true for compatibility
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
