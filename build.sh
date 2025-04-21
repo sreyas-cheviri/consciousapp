@@ -41,10 +41,13 @@ apt-get update && apt-get install -y \
     libxtst6 \
     lsb-release \
     wget \
-    xdg-utils
+    xdg-utils \
+    chromium-browser
 
 echo "Installing Node.js dependencies..."
 npm install
 
-echo "Explicitly installing Chrome for Puppeteer..."
-PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false npx puppeteer browsers install chrome
+echo "Creating Chrome cache directory..."
+mkdir -p ~/.cache/puppeteer
+chmod -R 777 ~/.cache/puppeteer
+
