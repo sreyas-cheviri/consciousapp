@@ -41,13 +41,14 @@ apt-get update && apt-get install -y \
     libxtst6 \
     lsb-release \
     wget \
-    xdg-utils \
-    chromium-browser
+    xdg-utils
+
+# Install Chrome directly
+echo "Installing Chrome..."
+wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
+echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google.list
+apt-get update && apt-get install -y google-chrome-stable
 
 echo "Installing Node.js dependencies..."
 npm install
-
-echo "Creating Chrome cache directory..."
-mkdir -p ~/.cache/puppeteer
-chmod -R 777 ~/.cache/puppeteer
 
