@@ -81,6 +81,8 @@ export const addContent = async (req: AuthRequest, res: Response): Promise<void>
     });
   } catch (err) {
     console.error("Error adding content:", err);
+    console.log("here");
+    
     res.status(500).json({ message: "Internal server error" });
   }
 };

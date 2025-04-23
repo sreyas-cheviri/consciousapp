@@ -19,13 +19,7 @@ interface ContentMetadata {
   thumbnail: string | null;
 }
 
-const initBrowser = async () => {
-  return await puppeteer.launch({ 
-    headless: true,
-    args: ['--ignore-certificate-errors'],
-    timeout: 30000 
-  });
-};
+
 
 export const handleNote = async (title: string, content: string): Promise<ContentMetadata> => {
   return {
@@ -104,7 +98,7 @@ export const fetchTwitter = async (url: string): Promise<ContentMetadata> => {
 export const fetchWebsite = async (url: string): Promise<ContentMetadata> => {
 
   const browser = await puppeteer.launch({
-    headless: true,  // Use boolean true for compatibility
+    headless: true,  
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
