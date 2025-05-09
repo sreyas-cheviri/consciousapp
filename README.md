@@ -1,11 +1,28 @@
 
 
 
-# Conscious - Backend
+<p align="center">
+  <a href="https://github.com/sreyas-cheviri/consciousapp">
+    <img src="https://github.com/sreyas-cheviri/consciousapp-client/blob/main/public/logo.png" alt="Logo" width="40px" >
+  </a>
+<br/>
+  <h3 align="center">Conscious app</h3>
+  <p align="center" >
+   Conscious is a second brain web app designed to save and search links, notes, and other media from various sources effortlessly. This repository contains the backend codebase for the Conscious application.
 
-## FE repo - [conscious-client](https://github.com/sreyas-cheviri/superconscious-client).
+  </p>
+  <div align="center">
 
-Conscious is a second brain web app designed to save and search links, notes, and other media from various sources effortlessly. This repository contains the backend codebase for the Conscious application.
+   
+![Language](https://img.shields.io/github/languages/top/sreyas-cheviri/consciousapp)
+![Last Commit](https://img.shields.io/github/last-commit/sreyas-cheviri/consciousapp)
+![Repo Size](https://img.shields.io/github/repo-size/sreyas-cheviri/consciousapp)
+
+  </div>
+</p>
+
+## FE repo -> [conscious-client](https://github.com/sreyas-cheviri/superconscious-client).
+
 
 
 ### Installation
